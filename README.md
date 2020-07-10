@@ -26,15 +26,6 @@ to `~/.bashrc`
 - Install QEMU
 - Install Docker
 - Enable Docker for VSL2
-- 
-
-
-Download docker
-
-## tl;dr
-
-The project skeleton is set up; A small piece of assembly code runs that just halts all CPU cores
-executing the kernel code.
 
 ## Building
 
@@ -65,9 +56,5 @@ executing the kernel code.
 
 In the project folder, invoke QEMU and observe the CPU core spinning on `wfe`:
 ```console
-$ make qemu
-[...]
-IN:
-0x00080000:  d503205f  wfe
-0x00080004:  17ffffff  b        #0x80000
+
 ```
