@@ -1,4 +1,35 @@
-# Tutorial 01 - Wait Forever
+# Bulding on Windows
+
+- Enable VSL2
+- Run in Ubuntu 18.04
+- Install Rust
+- Run following commands
+  ```
+  rustup toolchain add nightly-2020-06-30
+  rustup default nightly-2020-06-30
+  rustup component add llvm-tools-preview
+  rustup target add aarch64-unknown-none-softfloat
+  cargo install cargo-binutil
+
+  Or in one go:
+
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- \
+    --default-toolchain nightly-2020-06-30                           \
+    --component llvm-tools-preview
+
+  source $HOME/.cargo/env
+  rustup target add aarch64-unknown-none-softfloat
+  cargo install cargo-binutils
+  ```
+- VS Code terminal does not read `.profile`. Add: `export PATH="$HOME/.cargo/bin:$PATH"`
+to `~/.bashrc`
+- Install QEMU
+- Install Docker
+- Enable Docker for VSL2
+- 
+
+
+Download docker
 
 ## tl;dr
 
