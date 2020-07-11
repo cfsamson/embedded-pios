@@ -74,7 +74,6 @@ impl<T> interface::Mutex for &NullLock<T> {
     fn lock<R>(&mut self, f: impl FnOnce(&mut Self::Data) -> R) -> R {
         // In a real lock there would be code encapsulating this line that this mutable reference
         // will ever only be gived out once at a time.
-
         let data = unsafe { &mut *self.data.get() };
         
         f(data)
