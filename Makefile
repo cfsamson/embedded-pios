@@ -57,6 +57,7 @@ DOCKER_ARG_DEV = --privileged -v /dev:/dev
 
 DOCKER_QEMU = $(DOCKER_CMD) $(DOCKER_IMAGE)
 
+# Dockerize commands that require USB device passthrough only on Linux
 ifeq ($(UNAME_S),Linux)
     DOCKER_CMD_DEV = $(DOCKER_CMD) $(DOCKER_ARG_DEV)
 
