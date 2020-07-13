@@ -109,6 +109,7 @@ mod driver;
 mod memory;
 mod panic_wait;
 mod print;
+mod relocate;
 mod runtime_init;
 mod synchronization;
 
@@ -140,8 +141,11 @@ fn kernel_main() -> ! {
     use console::interface::All;
     use driver::interface::DriverManager;
 
+    // for debugging just send out characters
+
     // Wait for the user to hit Enter
     loop {
+        println!("here");
         if bsp::console::console().read_char() == '\n' {
             break;
         }

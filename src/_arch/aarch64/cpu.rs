@@ -10,22 +10,22 @@ use cortex_a::{asm, regs::*};
 // =============================================================================
 
 /// The entry of the `kernel` binary
-/// 
+///
 /// The function must be named `_start`, because the linker is looking for this exact name
-/// 
+///
 /// # Safety
-/// 
+///
 /// - Linker script must ensure to place this function at `0x80_000`.
 
 #[naked]
 #[no_mangle]
 pub unsafe extern "C" fn _start() -> ! {
-    use crate::runtime_init;
+    use crate::relocate;
 
     // Expect the boot core to start in EL2
     if bsp::cpu::BOOT_CORE_ID == cpu::smp::core_id() {
         SP.set(bsp::cpu::BOOT_CORE_STACK_START);
-        runtime_init::runtime_init()
+        relocate::relocate_self::<u64>()
     } else {
         // If not core0, sleep
         wait_forever();

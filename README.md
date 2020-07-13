@@ -1,4 +1,20 @@
-# Bulding on Windows
+## Before you start
+
+Don't do like me and play around with the debugging console cable. If you put the 5V power lead
+on the wrong pin and ground on another the device can still work but give subtle errors on some pins
+that short-circuited. I managed to short circuit the TX pin on the PI but the RX pin was still
+working. It took 3 days of debugging and the purchase of a logic analyzer to finally figure that out
+and purchase an new Raspberry Pi.
+
+## Bulding on Windows
+
+>NB! WSL 2 doesn't support USB so using that you can't connect to the serial port through an
+USB interface. https://github.com/microsoft/WSL/issues/4322. Use WSL 1 instead.
+
+Install docker and follow https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly
+to make docker work on WSL1.
+
+
 
 - Enable VSL2
 - Run in Ubuntu 18.04
@@ -51,6 +67,9 @@ to `~/.bashrc`
     - Just waits infinitely for a cpu event.
 
 [inner attributes]: https://doc.rust-lang.org/reference/attributes.html
+
+
+
 
 ### Test it
 

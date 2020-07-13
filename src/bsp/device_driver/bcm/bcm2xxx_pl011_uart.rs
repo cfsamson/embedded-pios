@@ -176,6 +176,7 @@ impl PL011UartInner {
 
     /// Set up baud rate and characteristics.
     ///
+    /// 
     /// Results in 8N1 and 230400 baud (if the clk has been previously set to 48 MHz by the
     /// firmware).
     pub fn init(&mut self) {
