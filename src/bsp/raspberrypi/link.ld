@@ -6,7 +6,7 @@
 SECTIONS
 {
     /* Set the link address to 32 MiB */
-    . = 0x80000;
+    . = 0x2000000;
 
     __binary_start = .;
     .text :

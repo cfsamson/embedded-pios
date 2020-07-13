@@ -97,7 +97,7 @@ register_bitfields! {
         ]
     ],
 
-    /// Interrut Clear Register
+    /// Interrupt Clear Register
     ICR [
         /// Meta field for all pending interrupts
         ALL OFFSET(0) NUMBITS(11) []

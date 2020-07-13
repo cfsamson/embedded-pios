@@ -5,7 +5,7 @@
 # Default to the RPi3
 BSP ?= rpi3
 
-DEV_SERIAL ?= /dev/ttyS3
+DEV_SERIAL ?= /dev/ttyUSB0
 
 UNAME_S = $(shell uname -s)
 
@@ -17,7 +17,7 @@ ifeq ($(BSP),rpi3)
     QEMU_MACHINE_TYPE = raspi3
     QEMU_RELEASE_ARGS = -serial stdio -display none
     LINKER_FILE       = src/bsp/raspberrypi/link.ld
-    RUSTC_MISC_ARGS   = -C target-cpu=cortex-a53
+    RUSTC_MISC_ARGS   = -C target-cpu=cortex-a53 -C relocation-model=pic
     CHAINBOOT_DEMO_PAYLOAD = demo_payload_rpi3.img
 else ifeq ($(BSP),rpi4)
     TARGET            = aarch64-unknown-none-softfloat
@@ -26,7 +26,7 @@ else ifeq ($(BSP),rpi4)
     QEMU_MACHINE_TYPE =
     QEMU_RELEASE_ARGS = -serial stdio -display none
     LINKER_FILE       = src/bsp/raspberrypi/link.ld
-    RUSTC_MISC_ARGS   = -C target-cpu=cortex-a72
+    RUSTC_MISC_ARGS   = -C target-cpu=cortex-a72 -C relocation-model=pic
     CHAINBOOT_DEMO_PAYLOAD = demo_payload_rpi4.img
 endif
 
@@ -45,14 +45,14 @@ DOC_CMD     = cargo doc $(COMPILER_ARGS)
 CLIPPY_CMD  = cargo clippy $(COMPILER_ARGS)
 CHECK_CMD   = cargo check $(COMPILER_ARGS)
 OBJCOPY_CMD = rust-objcopy \
-    --strip-all            \
-    -O binary
+	--strip-all            \
+	-O binary
 
 KERNEL_ELF = target/$(TARGET)/release/kernel
 
 DOCKER_IMAGE         = rustembedded/osdev-utils
 DOCKER_CMD           = docker run -it --rm -v $(shell pwd):/work/tutorial -w /work/tutorial
-DOCKER_ARG_DIR_UTILS = -v $(shell pwd)/../utils:/work/utils
+DOCKER_ARG_DIR_UTILS = -v $(shell pwd)/utils:/work/utils
 DOCKER_ARG_DEV = --privileged -v /dev:/dev
 
 DOCKER_QEMU = $(DOCKER_CMD) $(DOCKER_IMAGE)
@@ -67,7 +67,7 @@ EXEC_QEMU = $(QEMU_BINARY) -M $(QEMU_MACHINE_TYPE)
 EXEC_MINIPUSH = ruby ./utils/minipush.rb
 
 .PHONY: all $(KERNEL_ELF) $(KERNEL_BIN) doc qemu qemuasm chainboot clippy clean readelf objdump nm \
-    check
+	check
 
 all: $(KERNEL_BIN)
 
