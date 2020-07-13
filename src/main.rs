@@ -136,42 +136,54 @@ unsafe fn kernel_init() -> ! {
     kernel_main();
 }
 
-
 fn kernel_main() -> ! {
+    use bsp::console::console;
     use console::interface::All;
-    use driver::interface::DriverManager;
 
-    // for debugging just send out characters
+    println!(" __  __ _      _ _                 _ ");
+    println!("|  \\/  (_)_ _ (_) |   ___  __ _ __| |");
+    println!("| |\\/| | | ' \\| | |__/ _ \\/ _` / _` |");
+    println!("|_|  |_|_|_||_|_|____\\___/\\__,_\\__,_|");
+    println!();
+    println!("{:^37}", bsp::board_name());
+    println!();
+    println!("[ML] Requesting binary");
+    console().flush();
 
-    // Wait for the user to hit Enter
-    loop {
-        println!("here");
-        if bsp::console::console().read_char() == '\n' {
-            break;
+    // Clear the RX FIFOs, if any, of spurious received characters before starting with the loader
+    // protocol.
+    console().clear();
+
+    // Notify `Minipush` to send the binary.
+    for _ in 0..3 {
+        console().write_char(3 as char);
+    }
+
+       // Read the binary's size.
+    let mut size: u32 = u32::from(console().read_char() as u8);
+    size |= u32::from(console().read_char() as u8) << 8;
+    size |= u32::from(console().read_char() as u8) << 16;
+    size |= u32::from(console().read_char() as u8) << 24;
+
+    // Trust it's not too big.
+    console().write_char('O');
+    console().write_char('K');
+
+    let kernel_addr: *mut u8 = bsp::cpu::BOARD_DEFAULT_LOAD_ADDRESS as *mut u8;
+    unsafe {
+        // Read the kernel byte by byte.
+        for i in 0..size {
+            *kernel_addr.offset(i as isize) = console().read_char() as u8;
         }
     }
 
-    println!("[0] Booting on: {}", bsp::board_name());
+    println!("[ML] Loaded! Executing the payload now\n");
+    console().flush();
 
-    println!("[1] Drivers loaded:");
+    // Use black magic to get a function pointer.
+    let kernel: extern "C" fn() -> ! = unsafe { core::mem::transmute(kernel_addr as *const ()) };
 
-    for (i, driver) in bsp::driver::driver_manager()
-    .all_device_drivers()
-    .iter()
-    .enumerate()
-    {
-        println!("      {}. {}", i + 1, driver.compatible());
-    }
+    // Jump to loaded kernel!
+    kernel()
 
-    println!(
-        "[2] Chars written: {}",
-        bsp::console::console().chars_written()
-    );
-
-    println!("[3] Echoing input now");
-
-    loop {
-        let c = bsp::console::console().read_char();
-        bsp::console::console().write_char(c);
-    }
 }

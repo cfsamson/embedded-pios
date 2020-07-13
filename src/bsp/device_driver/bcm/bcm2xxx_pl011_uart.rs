@@ -176,7 +176,7 @@ impl PL011UartInner {
 
     /// Set up baud rate and characteristics.
     ///
-    /// 
+    ///
     /// Results in 8N1 and 230400 baud (if the clk has been previously set to 48 MHz by the
     /// firmware).
     pub fn init(&mut self) {
@@ -271,6 +271,16 @@ impl console::interface::Write for PL011Uart {
         let mut r = &self.inner;
         r.lock(|inner| fmt::Write::write_fmt(inner, args))
     }
+
+    fn flush(&self) {
+        // Spin until TX FIFO empty is set
+        let mut r = &self.inner;
+        r.lock(|inner| {
+            while !inner.FR.matches_all(FR::TXFE::SET) {
+                cpu::nop();
+            }
+        })
+    }
 }
 
 impl console::interface::Read for PL011Uart {
@@ -294,6 +304,16 @@ impl console::interface::Read for PL011Uart {
             // update statistics
             inner.chars_read += 1;
             ret
+        })
+    }
+
+    fn clear(&self) {
+        let mut r = &self.inner;
+        r.lock(|inner| {
+            // Read from the RX FIFO until it is indicating empty.
+            while !inner.FR.matches_all(FR::RXFE::SET) {
+                inner.DR.get();
+            }
         })
     }
 }
