@@ -1,3 +1,11 @@
+# WIP
+
+**Work in progress.**
+
+The idea is to build upon https://github.com/rust-embedded/rust-raspberrypi-OS-tutorials
+and combine that with https://os.phil-opp.com/ and http://intermezzos.github.io/book/second-edition/appendix/target-specifications.html to create a working OS for handling some simple projects with a Raspberry Pi with
+a system we build from first principles.
+
 ## Before you start
 
 Don't do like me and play around with the debugging console cable. If you put the 5V power lead
@@ -14,6 +22,9 @@ USB interface. https://github.com/microsoft/WSL/issues/4322. Use WSL 1 instead.
 Install docker and follow https://nickjanetakis.com/blog/setting-up-docker-for-windows-and-wsl-to-work-flawlessly
 to make docker work on WSL1.
 
+Can't get chapter 7 to work on Windows:
+- WSL2 doesn't suppport communication through serial line
+- WSL1 seems to have trouble talking to the TTL cable through serial line
 
 
 - Enable VSL2
