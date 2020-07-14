@@ -11,23 +11,23 @@ UNAME_S = $(shell uname -s)
 
 # BSP-specific arguments
 ifeq ($(BSP),rpi3)
-    TARGET            = aarch64-unknown-none-softfloat
-    KERNEL_BIN        = kernel8.img
-    QEMU_BINARY       = qemu-system-aarch64
-    QEMU_MACHINE_TYPE = raspi3
-    QEMU_RELEASE_ARGS = -serial stdio -display none
-    LINKER_FILE       = src/bsp/raspberrypi/link.ld
-    RUSTC_MISC_ARGS   = -C target-cpu=cortex-a53 -C relocation-model=pic
-    CHAINBOOT_DEMO_PAYLOAD = demo_payload_rpi3.img
+	TARGET            = aarch64-unknown-none-softfloat
+	KERNEL_BIN        = kernel8.img
+	QEMU_BINARY       = qemu-system-aarch64
+	QEMU_MACHINE_TYPE = raspi3
+	QEMU_RELEASE_ARGS = -serial stdio -display none
+	LINKER_FILE       = src/bsp/raspberrypi/link.ld
+	RUSTC_MISC_ARGS   = -C target-cpu=cortex-a53 -C relocation-model=pic
+	CHAINBOOT_DEMO_PAYLOAD = demo_payload_rpi3.img
 else ifeq ($(BSP),rpi4)
-    TARGET            = aarch64-unknown-none-softfloat
-    KERNEL_BIN        = kernel8.img
-    QEMU_BINARY       = qemu-system-aarch64
-    QEMU_MACHINE_TYPE =
-    QEMU_RELEASE_ARGS = -serial stdio -display none
-    LINKER_FILE       = src/bsp/raspberrypi/link.ld
-    RUSTC_MISC_ARGS   = -C target-cpu=cortex-a72 -C relocation-model=pic
-    CHAINBOOT_DEMO_PAYLOAD = demo_payload_rpi4.img
+	TARGET            = aarch64-unknown-none-softfloat
+	KERNEL_BIN        = kernel8.img
+	QEMU_BINARY       = qemu-system-aarch64
+	QEMU_MACHINE_TYPE =
+	QEMU_RELEASE_ARGS = -serial stdio -display none
+	LINKER_FILE       = src/bsp/raspberrypi/link.ld
+	RUSTC_MISC_ARGS   = -C target-cpu=cortex-a72 -C relocation-model=pic
+	CHAINBOOT_DEMO_PAYLOAD = demo_payload_rpi4.img
 endif
 
 # Export for build.rs
@@ -37,8 +37,8 @@ RUSTFLAGS          = -C link-arg=-T$(LINKER_FILE) $(RUSTC_MISC_ARGS)
 RUSTFLAGS_PEDANTIC = $(RUSTFLAGS) -D warnings -D missing_docs
 
 COMPILER_ARGS = --target=$(TARGET) \
-    --features bsp_$(BSP)          \
-    --release
+	--features bsp_$(BSP)          \
+	--release
 
 RUSTC_CMD   = cargo rustc $(COMPILER_ARGS)
 DOC_CMD     = cargo doc $(COMPILER_ARGS)
@@ -59,9 +59,9 @@ DOCKER_QEMU = $(DOCKER_CMD) $(DOCKER_IMAGE)
 
 # Dockerize commands that require USB device passthrough only on Linux
 ifeq ($(UNAME_S),Linux)
-    DOCKER_CMD_DEV = $(DOCKER_CMD) $(DOCKER_ARG_DEV)
+	DOCKER_CMD_DEV = $(DOCKER_CMD) $(DOCKER_ARG_DEV)
 
-    DOCKER_CHAINBOOT = $(DOCKER_CMD_DEV) $(DOCKER_ARG_DIR_UTILS) $(DOCKER_IMAGE)
+	DOCKER_CHAINBOOT = $(DOCKER_CMD_DEV) $(DOCKER_ARG_DIR_UTILS) $(DOCKER_IMAGE)
 endif
 
 EXEC_QEMU = $(QEMU_BINARY) -M $(QEMU_MACHINE_TYPE)
@@ -79,6 +79,7 @@ $(KERNEL_BIN): $(KERNEL_ELF)
 	@$(OBJCOPY_CMD) $(KERNEL_ELF) $(KERNEL_BIN)
 
 doc:
+	@echo $(DOC_CMD) --document-private-items --open
 	$(DOC_CMD) --document-private-items --open
 
 
@@ -107,7 +108,7 @@ readelf: $(KERNEL_ELF)
 
 objdump: $(KERNEL_ELF)
 	rust-objdump --arch-name aarch64 --disassemble --demangle --no-show-raw-insn \
-	    --print-imm-hex $(KERNEL_ELF)
+		--print-imm-hex $(KERNEL_ELF)
 
 nm: $(KERNEL_ELF)
 	rust-nm --demangle --print-size $(KERNEL_ELF) | sort

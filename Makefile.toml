@@ -19,13 +19,16 @@ else
     trigger_error "The board '${BSP}' is currently not supported"
 end
 
-set_env RUSTFLAGS                   "-C link-arg=-T${LINKER_FILE} ${RUSTC_MISC_ARGS}"
-set_env RUSTFLAGS_PEDANTIC          "${RUSTFLAGS} -D warnings -D missing_docs"
-
 if equals ${UNAME_S} "Linux"
     set_env DOCKER_CMD_DEV          ${DOCKER_CMD} ${DOCKER_ARG_DEV}
     set_env DOCKER_CHAINBOOT        ${DOCKER_CMD} ${DOCKER_ARG_DEV} ${DOCKER_IMAGE}
 end
+''',
+'''
+#!@duckscript
+set_env RUSTFLAGS                   "-C link-arg=-T${LINKER_FILE} ${RUSTC_MISC_ARGS}"
+set_env RUSTFLAGS_PEDANTIC          "${RUSTFLAGS} -D warnings -D missing_docs"
+set_env EXEC_QEMU                   "${QEMU_BINARY} -M ${QEMU_MACHINE_TYPE}"
 '''
 ]
 
@@ -44,7 +47,7 @@ LINKER_FILE         = "src/bsp/raspberrypi/link.ld"
 
 COMPILER_ARGS       = "--target=${TARGET} --features bsp_${BSP} --release"
 RUSTC_CMD           = "rustc ${COMPILER_ARGS}"
-DOC_CMD             = "cargo doc ${COMPILER_ARGS}"
+DOC_CMD             = "doc ${COMPILER_ARGS}"
 CLIPPY_CMD          = "clippy ${COMPILER_ARGS}"
 OBJCOPY_CMD         = "rust-objcopy --strip-all -O binary"
 KERNEL_ELF          = "target/${TARGET}/release/kernel"
@@ -54,9 +57,8 @@ DOCKER_ARG_DIR_UTILS = "-v ${CARGO_MAKE_WORKING_DIRECTORY}/utils:/work/utils" # 
 DOCKER_ARG_DEV      = "--privileged -v /dev:/dev"
 DOCKER_QEMU         = "${DOCKER_CMD} ${DOCKER_IMAGE}"
 
-EXEC_QEMU           = "${DOCKER_CMD} ${DOCKER_ARG_DEV}"
-EXEC_MINIPUSH       = "ruby ../utils/minipush.rb"
 
+EXEC_MINIPUSH       = "ruby ./utils/minipush.rb"
 CARGO_MAKE_RUST_CHANNEL = "nightly-2020-06-30"
 
 ################################################################################
@@ -107,17 +109,14 @@ toolchain = "nightly-2020-06-30"
 env = { RUSTFLAGS = "${RUSTFLAGS_PEDANTIC}"}
 script_runner = "@duckscript"
 script = [ "cp ${KERNEL_ELF} ${KERNEL_BIN}" ]
-
 dependencies = ["rustc"]
-
 
 
 [tasks.doc]
 description = "Creates documentation"
 toolchain = "nightly-2020-06-30"
-env  = {DOC_CMD = "${DOC_CMD} --document-private-items --open"}
 command = "cargo"
-args = ["doc",  "--document-private-items", "--open"]
+args = ["@@split(DOC_CMD, )"]
 
 [tasks.qemu]
 description = "Runs the kernel in qemu"
@@ -195,7 +194,7 @@ command = "cargo"
 args = ["check", "@split(COMPILER_ARGS, )"]
 
 [tasks.install]
-description = "Installs the neccecary tools we need"
+description = "Installs the neccecary tools we need. You only need to run this once."
 toolchain = "stable"
 dependencies = [
     "install_binutils",
@@ -232,5 +231,6 @@ script = [
     "echo DOCKER_ARG_DEV: ${DOCKER_ARG_DEV}",
     "echo DOCKER_QEMU: ${DOCKER_QEMU}",
     "echo DOCKER_CMD_DEV: ${DOCKER_CMD_DEV}",
-    "echo DOCKER_CHAINBOOT: ${DOCKER_CHAINBOOT}"
+    "echo DOCKER_CHAINBOOT: ${DOCKER_CHAINBOOT}",
+    "echo EXEC_QEMU: ${EXEC_QEMU}"
 ]
