@@ -46,7 +46,6 @@ COMPILER_ARGS       = "--target=${TARGET} --features bsp_${BSP} --release"
 RUSTC_CMD           = "rustc ${COMPILER_ARGS}"
 DOC_CMD             = "cargo doc ${COMPILER_ARGS}"
 CLIPPY_CMD          = "clippy ${COMPILER_ARGS}"
-# CHECK_CMD           = "cargo check ${COMPILER_ARGS}"
 OBJCOPY_CMD         = "rust-objcopy --strip-all -O binary"
 KERNEL_ELF          = "target/${TARGET}/release/kernel"
 DOCKER_IMAGE        = "rustembedded/osdev-utils"
@@ -79,11 +78,32 @@ script = [
     '''
 ]
 
+[tasks.install_nightly]
+description = "Installs a version of Nightly with the supported targets"
+command = "rustup"
+args = ["toolchain", "add", "nightly-2020-06-30"]
+
+[tasks.install_llvm_tools]
+description = "Installs llvm tools"
+install_crate = {rustup_component_name = "llvm-tools-preview"}
+
+[tasks.install_target]
+description = "Installs the cross compile target for Raspberry Pi"
+command = "rustup"
+args = ["target", "add", "aarch64-unknown-none-softfloat"]
+
+[tasks.install_binutils]
+description = "Installs cargo binutils"
+install_crate = { crate_name = "cargo-binutils", binary = "objdump", test_arg = "--version"}
+
+
 ################################################################################
 # Public tasks
 ################################################################################
 
 [tasks.default]
+description = "Default task builds the kernel image"
+toolchain = "nightly-2020-06-30"
 env = { RUSTFLAGS = "${RUSTFLAGS_PEDANTIC}"}
 script_runner = "@duckscript"
 script = [ "cp ${KERNEL_ELF} ${KERNEL_BIN}" ]
@@ -93,11 +113,15 @@ dependencies = ["rustc"]
 
 
 [tasks.doc]
+description = "Creates documentation"
+toolchain = "nightly-2020-06-30"
 env  = {DOC_CMD = "${DOC_CMD} --document-private-items --open"}
 command = "cargo"
 args = ["doc",  "--document-private-items", "--open"]
 
 [tasks.qemu]
+description = "Runs the kernel in qemu"
+toolchain = "nightly-2020-06-30"
 script_runner = "@shell"
 script = [
 '''
@@ -109,6 +133,8 @@ ${DOCKER_QEMU} ${EXEC_QEMU} ${QEMU_RELEASE_ARGS} -kernel ${KERNEL_BIN}
 dependencies = ["check_machine_type_qemu"]
 
 [tasks.qemuasm]
+description = "Runs the kernel image in qemu and shows the assembly generated"
+toolchain = "nightly-2020-06-30"
 script_runner = "@shell"
 script = [
 '''
@@ -118,6 +144,8 @@ ${DOCKER_QEMU} ${EXEC_QEMU} ${QEMU_RELEASE_ARGS} -kernel ${KERNEL_BIN} -d in_asm
 ]
 
 [tasks.chainboot]
+description = "Launches the chainbooter and transfers the kernel"
+toolchain = "nightly-2020-06-30"
 script_runner = "@shell"
 script = [
 '''
@@ -127,20 +155,27 @@ ${DOCKER_CHAINBOOT} ${EXEC_MINIPUSH} ${DEV_SERIAL} ${CHAINBOOT_DEMO_PAYLOAD}
 ]
 
 [tasks.clippy]
+description = "Runs Clippy on the codebase"
+toolchain = "nightly-2020-06-30"
 command = "cargo"
 env = {RUSTFLAGS = "${RUSTFLAGS_PEDANTIC}" }
 args = ["@@split(CLIPPY_CMD, )"]
 
 [tasks.clean]
+description = "Removes the build kernel image"
+toolchain = "nightly-2020-06-30"
 script_runner = "@shell"
 script = ["rm -rf target ${KERNEL_BIN}"]
 
 # Linux only
 [tasks.readelf]
+description = "Reads the build ELF file"
 command = "readelf"
 args = ["-a", "${KERNEL_ELF}"]
 
 [tasks.objdump]
+description = "Shows an a dissasembly of the ELF file"
+toolchain = "nightly-2020-06-30"
 command = "rust-objdump"
 args = [
     "--arch-name", "aarch64", "--disassemble", "--demangle",
@@ -148,6 +183,8 @@ args = [
 ]
 
 [tasks.nm]
+description = "Lists all the symbols in the ELF generated file"
+toolchain = "nightly-2020-06-30"
 script_runner = "@shell"
 script = ["rust-nm --demangle --print-size ${KERNEL_ELF} | sort"]
 
@@ -157,8 +194,18 @@ env = {RUSTFLAGS = "${RUSTFLAGS}"}
 command = "cargo"
 args = ["check", "@split(COMPILER_ARGS, )"]
 
+[tasks.install]
+description = "Installs the neccecary tools we need"
+toolchain = "stable"
+dependencies = [
+    "install_binutils",
+    "install_target",
+    "install_llvm_tools",
+    "install_nightly"
+    ]
 
-[tasks.t]
+[tasks.env]
+description = "Outputs all the environment variables in this file. Useful for debugging."
 script = [
     "echo BSP: ${BSP}",
     "echo DEV_SERIAL: ${DEV_SERIAL}",
@@ -187,54 +234,3 @@ script = [
     "echo DOCKER_CMD_DEV: ${DOCKER_CMD_DEV}",
     "echo DOCKER_CHAINBOOT: ${DOCKER_CHAINBOOT}"
 ]
-
-dependencies = ["init"]
-
-# [tasks.init]
-# script = [
-# '''
-# #!@duckscript
-
-# UNAME_S = uname -s
-
-# set_env UNAME_S                 ${UNAME_S}
-# set_env TARGET                  "aarch64-unknown-none-softfloat"
-# set_env KERNEL_BIN              "kernel8.img"
-# set_env QEMU_BINARY             "qemu-system-aarch64"
-# set_env QEMU_RELEASE_ARGS       "-serial stdio -display none"
-# set_env LINKER_FILE             "src/bsp/raspberrypi/link.ld"
-
-# set_env RUSTFLAGS               "-C link-arg=-T${LINKER_FILE} ${RUSTC_MISC_ARGS}"
-# set_env RUSTFLAGS_PEDANTIC      "${RUSTFLAGS} -D warnings -D missing_docs"
-# set_env COMPILER_ARGS           "--target=${TARGET} --features bsp_${BSP} --release"
-# set_env RUSTC_CMD               "cargo rustc ${COMPILER_ARGS}"
-# set_env DOC_CMD                 "cargo doc ${COMPILER_ARGS}"
-# set_env CLIPPY_CMD              "cargo clippy ${COMPILER_ARGS}"
-# set_env CHECK_CMD               "cargo check ${COMPILER_ARGS}"
-# set_env OBJCOPY_CMD             "rust-objcopy --strip-all -O binary"
-# set_env KERNEL_ELF              "target/${TARGET}/release/kernel"
-# set_env DOCKER_IMAGE            "rustembedded/osdev-utils"
-# set_env DOCKER_CMD              "docker run -it --rm -v ${CARGO_MAKE_WORKING_DIRECTORY}:/work/tutorial -w /work/tutorial"
-
-# set_env DOCKER_ARG_DIR_UTILS    "-v ${CARGO_MAKE_WORKING_DIRECTORY}/utils:/work/utils" # changed from orig
-# set_env DOCKER_ARG_DEV          "--privileged -v /dev:/dev"
-# set_env DOCKER_QEMU             "${DOCKER_CMD} ${DOCKER_IMAGE}"
-
-# if equals ${BSP} "rpi3"
-#     set_env QEMU_MACHINE_TYPE       "raspi3"
-#     set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a53 -C relocation-model=pic"
-#     set_env CHAINBOOT_DEMO_PAYLOAD  "demo_payload_rpi3.img"
-# elseif equals ${BSP} "rpi4"
-#     set_env QEMU_MACHINE_TYPE       ""
-#     set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a72 -C relocation-model=pic"
-#     set_env CHAINBOOT_DEMO_PAYLOAD  "demo_payload_rpi4.img"
-# else
-#     trigger_error "The board '${BSP}' is currently not supported"
-# end
-
-# if equals ${UNAME_S} "Linux"
-#     set_env DOCKER_CMD_DEV          ${DOCKER_CMD} ${DOCKER_ARG_DEV}
-#     set_env DOCKER_CHAINBOOT        ${DOCKER_CMD} ${DOCKER_ARG_DEV} ${DOCKER_IMAGE}
-# end
-# '''
-# ]
