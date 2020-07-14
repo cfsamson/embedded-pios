@@ -1,0 +1,240 @@
+
+
+# This runs after [env] and any external env-vars is set
+env_scripts = [
+'''
+#!@duckscript
+
+set_env UNAME_S                     uname -s
+
+if equals ${BSP} "rpi3"
+    set_env QEMU_MACHINE_TYPE       "raspi3"
+    set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a53 -C relocation-model=pic"
+    set_env CHAINBOOT_DEMO_PAYLOAD  "demo_payload_rpi3.img"
+elseif equals ${BSP} "rpi4"
+    set_env QEMU_MACHINE_TYPE       ""
+    set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a72 -C relocation-model=pic"
+    set_env CHAINBOOT_DEMO_PAYLOAD  "demo_payload_rpi4.img"
+else
+    trigger_error "The board '${BSP}' is currently not supported"
+end
+
+set_env RUSTFLAGS                   "-C link-arg=-T${LINKER_FILE} ${RUSTC_MISC_ARGS}"
+set_env RUSTFLAGS_PEDANTIC          "${RUSTFLAGS} -D warnings -D missing_docs"
+
+if equals ${UNAME_S} "Linux"
+    set_env DOCKER_CMD_DEV          ${DOCKER_CMD} ${DOCKER_ARG_DEV}
+    set_env DOCKER_CHAINBOOT        ${DOCKER_CMD} ${DOCKER_ARG_DEV} ${DOCKER_IMAGE}
+end
+'''
+]
+
+[config]
+skip_core_tasks = true
+
+[env]
+BSP                 = {value = "rpi3", condition = {env_not_set = ["BSP"]}}
+DEV_SERIAL          = {value = "/dev/ttyUSB0", condition = {env_not_set = ["DEV_SERIAL"]}}
+UNAME_S             = { script_runner = "@duckscript", script = ["uname -s"] }
+TARGET              = "aarch64-unknown-none-softfloat"
+KERNEL_BIN          = "kernel8.img"
+QEMU_BINARY         = "qemu-system-aarch64"
+QEMU_RELEASE_ARGS   = "-serial stdio -display none"
+LINKER_FILE         = "src/bsp/raspberrypi/link.ld"
+
+COMPILER_ARGS       = "--target=${TARGET} --features bsp_${BSP} --release"
+RUSTC_CMD           = "rustc ${COMPILER_ARGS}"
+DOC_CMD             = "cargo doc ${COMPILER_ARGS}"
+CLIPPY_CMD          = "clippy ${COMPILER_ARGS}"
+# CHECK_CMD           = "cargo check ${COMPILER_ARGS}"
+OBJCOPY_CMD         = "rust-objcopy --strip-all -O binary"
+KERNEL_ELF          = "target/${TARGET}/release/kernel"
+DOCKER_IMAGE        = "rustembedded/osdev-utils"
+DOCKER_CMD          = "docker run -it --rm -v ${CARGO_MAKE_WORKING_DIRECTORY}:/work/tutorial -w /work/tutorial"
+DOCKER_ARG_DIR_UTILS = "-v ${CARGO_MAKE_WORKING_DIRECTORY}/utils:/work/utils" # changed from orig
+DOCKER_ARG_DEV      = "--privileged -v /dev:/dev"
+DOCKER_QEMU         = "${DOCKER_CMD} ${DOCKER_IMAGE}"
+
+EXEC_QEMU           = "${DOCKER_CMD} ${DOCKER_ARG_DEV}"
+EXEC_MINIPUSH       = "ruby ../utils/minipush.rb"
+
+CARGO_MAKE_RUST_CHANNEL = "nightly-2020-06-30"
+
+################################################################################
+# Private tasks
+################################################################################
+
+[tasks.rustc]
+command = "cargo"
+args = ["@@split(RUSTC_CMD, )"]
+
+[tasks.check_machine_type_qemu]
+description = "Checks if the machine type is supported by QEMU"
+script_runner ="@duckscript"
+script = [
+    '''
+    if is_empty ${QEMU_MACHINE_TYPE}
+        trigger_error "The board '${BSP}' is currently not supported by QEMU"
+    end
+    '''
+]
+
+################################################################################
+# Public tasks
+################################################################################
+
+[tasks.default]
+env = { RUSTFLAGS = "${RUSTFLAGS_PEDANTIC}"}
+script_runner = "@duckscript"
+script = [ "cp ${KERNEL_ELF} ${KERNEL_BIN}" ]
+
+dependencies = ["rustc"]
+
+
+
+[tasks.doc]
+env  = {DOC_CMD = "${DOC_CMD} --document-private-items --open"}
+command = "cargo"
+args = ["doc",  "--document-private-items", "--open"]
+
+[tasks.qemu]
+script_runner = "@shell"
+script = [
+'''
+echo ${DOCKER_QEMU} ${EXEC_QEMU} ${QEMU_RELEASE_ARGS} -kernel ${KERNEL_BIN}
+${DOCKER_QEMU} ${EXEC_QEMU} ${QEMU_RELEASE_ARGS} -kernel ${KERNEL_BIN}
+'''
+]
+
+dependencies = ["check_machine_type_qemu"]
+
+[tasks.qemuasm]
+script_runner = "@shell"
+script = [
+'''
+echo ${DOCKER_QEMU} ${EXEC_QEMU} ${QEMU_RELEASE_ARGS} -kernel ${KERNEL_BIN} -d in_asm
+${DOCKER_QEMU} ${EXEC_QEMU} ${QEMU_RELEASE_ARGS} -kernel ${KERNEL_BIN} -d in_asm
+'''
+]
+
+[tasks.chainboot]
+script_runner = "@shell"
+script = [
+'''
+echo ${DOCKER_CHAINBOOT} ${EXEC_MINIPUSH} ${DEV_SERIAL} ${CHAINBOOT_DEMO_PAYLOAD}
+${DOCKER_CHAINBOOT} ${EXEC_MINIPUSH} ${DEV_SERIAL} ${CHAINBOOT_DEMO_PAYLOAD}
+'''
+]
+
+[tasks.clippy]
+command = "cargo"
+env = {RUSTFLAGS = "${RUSTFLAGS_PEDANTIC}" }
+args = ["@@split(CLIPPY_CMD, )"]
+
+[tasks.clean]
+script_runner = "@shell"
+script = ["rm -rf target ${KERNEL_BIN}"]
+
+# Linux only
+[tasks.readelf]
+command = "readelf"
+args = ["-a", "${KERNEL_ELF}"]
+
+[tasks.objdump]
+command = "rust-objdump"
+args = [
+    "--arch-name", "aarch64", "--disassemble", "--demangle",
+"--no-show-raw-insn", "--print-imm-hex", "${KERNEL_ELF}"
+]
+
+[tasks.nm]
+script_runner = "@shell"
+script = ["rust-nm --demangle --print-size ${KERNEL_ELF} | sort"]
+
+[tasks.check]
+description = "Runs cargo check for bsp_rpi4 or bsp_rpi3"
+env = {RUSTFLAGS = "${RUSTFLAGS}"}
+command = "cargo"
+args = ["check", "@split(COMPILER_ARGS, )"]
+
+
+[tasks.t]
+script = [
+    "echo BSP: ${BSP}",
+    "echo DEV_SERIAL: ${DEV_SERIAL}",
+    "echo UNAME_S: ${UNAME_S}",
+    "echo TARGET: ${TARGET}",
+    "echo KERNEL_BIN: ${KERNEL_BIN}",
+    "echo QEMU_BINARY: ${QEMU_BINARY}",
+    "echo QEMU_MACHINE_TYPE: ${QEMU_MACHINE_TYPE}",
+    "echo QEMU_RELEASE_ARGS: ${QEMU_RELEASE_ARGS}",
+    "echo LINKER_FILE: ${LINKER_FILE}",
+    "echo RUSTC_MISC_ARGS: ${RUSTC_MISC_ARGS}",
+    "echo RUSTFLAGS: ${RUSTFLAGS}",
+    "echo RUSTFLAGS_PEDANTIC: ${RUSTFLAGS_PEDANTIC}",
+    "echo COMPILER_ARGS: ${CHAINBOOT_DEMO_PAYLOAD}",
+    "echo RUSTC_CMD: ${RUSTC_CMD}",
+    "echo DOC_CMD: ${DOC_CMD}",
+    "echo CLIPPY_CMD: ${CLIPPY_CMD}",
+    "echo CHECK_CMD: ${CHECK_CMD}",
+    "echo OBJCOPY_CMD: ${OBJCOPY_CMD}",
+    "echo KERNEL_ELF: ${KERNEL_ELF}",
+    "echo DOCKER_IMAGE: ${DOCKER_IMAGE}",
+    "echo DOCKER_CMD: ${DOCKER_CMD}",
+    "echo DOCKER_ARG_DIR_UTILS: ${DOCKER_ARG_DIR_UTILS}",
+    "echo DOCKER_ARG_DEV: ${DOCKER_ARG_DEV}",
+    "echo DOCKER_QEMU: ${DOCKER_QEMU}",
+    "echo DOCKER_CMD_DEV: ${DOCKER_CMD_DEV}",
+    "echo DOCKER_CHAINBOOT: ${DOCKER_CHAINBOOT}"
+]
+
+dependencies = ["init"]
+
+# [tasks.init]
+# script = [
+# '''
+# #!@duckscript
+
+# UNAME_S = uname -s
+
+# set_env UNAME_S                 ${UNAME_S}
+# set_env TARGET                  "aarch64-unknown-none-softfloat"
+# set_env KERNEL_BIN              "kernel8.img"
+# set_env QEMU_BINARY             "qemu-system-aarch64"
+# set_env QEMU_RELEASE_ARGS       "-serial stdio -display none"
+# set_env LINKER_FILE             "src/bsp/raspberrypi/link.ld"
+
+# set_env RUSTFLAGS               "-C link-arg=-T${LINKER_FILE} ${RUSTC_MISC_ARGS}"
+# set_env RUSTFLAGS_PEDANTIC      "${RUSTFLAGS} -D warnings -D missing_docs"
+# set_env COMPILER_ARGS           "--target=${TARGET} --features bsp_${BSP} --release"
+# set_env RUSTC_CMD               "cargo rustc ${COMPILER_ARGS}"
+# set_env DOC_CMD                 "cargo doc ${COMPILER_ARGS}"
+# set_env CLIPPY_CMD              "cargo clippy ${COMPILER_ARGS}"
+# set_env CHECK_CMD               "cargo check ${COMPILER_ARGS}"
+# set_env OBJCOPY_CMD             "rust-objcopy --strip-all -O binary"
+# set_env KERNEL_ELF              "target/${TARGET}/release/kernel"
+# set_env DOCKER_IMAGE            "rustembedded/osdev-utils"
+# set_env DOCKER_CMD              "docker run -it --rm -v ${CARGO_MAKE_WORKING_DIRECTORY}:/work/tutorial -w /work/tutorial"
+
+# set_env DOCKER_ARG_DIR_UTILS    "-v ${CARGO_MAKE_WORKING_DIRECTORY}/utils:/work/utils" # changed from orig
+# set_env DOCKER_ARG_DEV          "--privileged -v /dev:/dev"
+# set_env DOCKER_QEMU             "${DOCKER_CMD} ${DOCKER_IMAGE}"
+
+# if equals ${BSP} "rpi3"
+#     set_env QEMU_MACHINE_TYPE       "raspi3"
+#     set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a53 -C relocation-model=pic"
+#     set_env CHAINBOOT_DEMO_PAYLOAD  "demo_payload_rpi3.img"
+# elseif equals ${BSP} "rpi4"
+#     set_env QEMU_MACHINE_TYPE       ""
+#     set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a72 -C relocation-model=pic"
+#     set_env CHAINBOOT_DEMO_PAYLOAD  "demo_payload_rpi4.img"
+# else
+#     trigger_error "The board '${BSP}' is currently not supported"
+# end
+
+# if equals ${UNAME_S} "Linux"
+#     set_env DOCKER_CMD_DEV          ${DOCKER_CMD} ${DOCKER_ARG_DEV}
+#     set_env DOCKER_CHAINBOOT        ${DOCKER_CMD} ${DOCKER_ARG_DEV} ${DOCKER_IMAGE}
+# end
+# '''
+# ]
