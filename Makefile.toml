@@ -67,7 +67,16 @@ CARGO_MAKE_RUST_CHANNEL = "nightly-2020-06-30"
 
 [tasks.rustc]
 command = "cargo"
+toolchain = "nightly-2020-06-30"
 args = ["@@split(RUSTC_CMD, )"]
+env = { RUSTFLAGS = "${RUSTFLAGS} ${RUSTFLAGS_PEDANTIC}"}
+# script_runner ="@shell"
+# script = [
+#     '''
+#     echo cargo ${RUSTC_CMD}
+#     cargo ${RUSTC_CMD}
+#     '''
+# ]
 
 [tasks.check_machine_type_qemu]
 description = "Checks if the machine type is supported by QEMU"
@@ -106,9 +115,14 @@ install_crate = { crate_name = "cargo-binutils", binary = "objdump", test_arg = 
 [tasks.default]
 description = "Default task builds the kernel image"
 toolchain = "nightly-2020-06-30"
-env = { RUSTFLAGS = "${RUSTFLAGS_PEDANTIC}"}
-script_runner = "@duckscript"
-script = [ "cp ${KERNEL_ELF} ${KERNEL_BIN}" ]
+
+script_runner = "@shell"
+script = [
+    '''
+    echo ${OBJCOPY_CMD} ${KERNEL_ELF} ${KERNEL_BIN}
+    ${OBJCOPY_CMD} ${KERNEL_ELF} ${KERNEL_BIN}
+    '''
+]
 dependencies = ["rustc"]
 
 
