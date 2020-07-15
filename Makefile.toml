@@ -205,7 +205,7 @@ script = ["rust-nm --demangle --print-size ${KERNEL_ELF} | sort"]
 description = "Runs cargo check for bsp_rpi4 or bsp_rpi3"
 env = {RUSTFLAGS = "${RUSTFLAGS}"}
 command = "cargo"
-args = ["check", "@split(COMPILER_ARGS, )"]
+args = ["check", "@@split(COMPILER_ARGS, )"]
 
 [tasks.install]
 description = "Installs the neccecary tools we need. You only need to run this once."
