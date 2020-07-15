@@ -10,3 +10,4 @@ mod arch_cpu;
 pub use arch_cpu::*;
 
 pub mod smp;
+

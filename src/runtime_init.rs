@@ -25,15 +25,15 @@ struct Traitor;
 pub trait RunTimeInit {
     /// Equivalent to `crt0` or `c0` code in C/C++ world. Clears the `bss` section, then jumps to
     /// the kernel init code.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// - Only a single core must be active and running this function
     unsafe fn runtime_init(&self) -> ! {
         zero_bss();
         crate::kernel_init()
     }
-} 
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -77,8 +77,13 @@ unsafe fn zero_bss() {
 // Public Code
 //--------------------------------------------------------------------------------------------------
 
-/// Give the callee a `RunTimeInit` trait object
-
-pub unsafe fn get() -> &'static dyn RunTimeInit {
-    &Traitor {}
+/// Equivalent to `crt0` or `c0` code in C/C++ world. Clears the `bss` section, then jumps to kernel
+/// init code.
+///
+/// # Safety
+///
+/// - Only a single core must be active and running this function.
+pub unsafe fn runtime_init() -> ! {
+    zero_bss();
+    crate::kernel_init()
 }

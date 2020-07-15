@@ -5,8 +5,8 @@
 
 SECTIONS
 {
-    /* Set the link address to 32 MiB */
-    . = 0x2000000;
+    /* Set current address to the value from which the RPi starts execution */
+    . = 0x80000;
 
     __binary_start = .;
     .text :
@@ -32,15 +32,6 @@ SECTIONS
         . = ALIGN(8);
         __bss_end = .;
     }
-
-    .got :
-    {
-        *(.got*)
-    }
-
-    /* Fill up to 8 byte, b/c relocating the binary is done in u64 chunks */
-    . = ALIGN(8);
-    __binary_end = .;
 
     /DISCARD/ : { *(.comment*) }
 }

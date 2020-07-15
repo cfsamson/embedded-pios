@@ -9,12 +9,10 @@ set_env UNAME_S                     uname -s
 
 if equals ${BSP} "rpi3"
     set_env QEMU_MACHINE_TYPE       "raspi3"
-    set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a53 -C relocation-model=pic"
-    set_env CHAINBOOT_DEMO_PAYLOAD  "demo_payload_rpi3.img"
+    set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a53"
 elseif equals ${BSP} "rpi4"
     set_env QEMU_MACHINE_TYPE       ""
-    set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a72 -C relocation-model=pic"
-    set_env CHAINBOOT_DEMO_PAYLOAD  "demo_payload_rpi4.img"
+    set_env RUSTC_MISC_ARGS         "-C target-cpu=cortex-a72"
 else
     trigger_error "The board '${BSP}' is currently not supported"
 end
@@ -205,7 +203,7 @@ script = ["rust-nm --demangle --print-size ${KERNEL_ELF} | sort"]
 description = "Runs cargo check for bsp_rpi4 or bsp_rpi3"
 env = {RUSTFLAGS = "${RUSTFLAGS}"}
 command = "cargo"
-args = ["check", "@split(COMPILER_ARGS, )"]
+args = ["check", "@@split(COMPILER_ARGS, )"]
 
 [tasks.install]
 description = "Installs the neccecary tools we need. You only need to run this once."

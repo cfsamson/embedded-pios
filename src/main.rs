@@ -109,9 +109,9 @@ mod driver;
 mod memory;
 mod panic_wait;
 mod print;
-mod relocate;
 mod runtime_init;
 mod synchronization;
+mod time;
 
 /// Early init code.
 ///
@@ -137,53 +137,24 @@ unsafe fn kernel_init() -> ! {
 }
 
 fn kernel_main() -> ! {
-    use bsp::console::console;
-    use console::interface::All;
+    use core::time::Duration;
+    use driver::interface::DriverManager;
+    use time::interface::TimeManager;
 
-    println!(" __  __ _      _ _                 _ ");
-    println!("|  \\/  (_)_ _ (_) |   ___  __ _ __| |");
-    println!("| |\\/| | | ' \\| | |__/ _ \\/ _` / _` |");
-    println!("|_|  |_|_|_||_|_|____\\___/\\__,_\\__,_|");
-    println!();
-    println!("{:^37}", bsp::board_name());
-    println!();
-    println!("[ML] Requesting binary");
-    console().flush();
+    info!("Booting on: {}", bsp::board_name());
 
-    // Clear the RX FIFOs, if any, of spurious received characters before starting with the loader
-    // protocol.
-    console().clear();
+    info!("Architectual timer resolution: {} ns", time::time_manager().resolution().as_nanos());
 
-    // Notify `Minipush` to send the binary.
-    for _ in 0..3 {
-        console().write_char(3 as char);
+    info!("Drivers loaded:");
+    for (i, driver) in bsp::driver::driver_manager().all_device_drivers().iter().enumerate() {
+        info!("      {}. {}", i + 1, driver.compatible());
     }
 
-       // Read the binary's size.
-    let mut size: u32 = u32::from(console().read_char() as u8);
-    size |= u32::from(console().read_char() as u8) << 8;
-    size |= u32::from(console().read_char() as u8) << 16;
-    size |= u32::from(console().read_char() as u8) << 24;
+    // Test a failing timer case.
+    time::time_manager().spin_for(Duration::from_nanos(1));
 
-    // Trust it's not too big.
-    console().write_char('O');
-    console().write_char('K');
-
-    let kernel_addr: *mut u8 = bsp::cpu::BOARD_DEFAULT_LOAD_ADDRESS as *mut u8;
-    unsafe {
-        // Read the kernel byte by byte.
-        for i in 0..size {
-            *kernel_addr.offset(i as isize) = console().read_char() as u8;
-        }
+    loop {
+        info!("Spinning for 1 second");
+        time::time_manager().spin_for(Duration::from_secs(1));
     }
-
-    println!("[ML] Loaded! Executing the payload now\n");
-    console().flush();
-
-    // Use black magic to get a function pointer.
-    let kernel: extern "C" fn() -> ! = unsafe { core::mem::transmute(kernel_addr as *const ()) };
-
-    // Jump to loaded kernel!
-    kernel()
-
 }

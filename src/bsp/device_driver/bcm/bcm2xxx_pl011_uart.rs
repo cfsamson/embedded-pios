@@ -185,7 +185,7 @@ impl PL011UartInner {
 
         self.ICR.write(ICR::ALL::CLEAR);
         self.IBRD.write(IBRD::IBRD.val(13));
-        self.FBRD.write(FBRD::FBRD.val(2));
+        self.FBRD.write(FBRD::FBRD.val(1));
         self.LCRH
             .write(LCRH::WLEN::EightBit + LCRH::FEN::FifosEnabled); // 8NI + FIFO on
         self.CR
